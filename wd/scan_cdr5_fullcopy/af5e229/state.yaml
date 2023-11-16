@@ -1,0 +1,9 @@
+epoch: 3857
+processed_events: 443570000
+grad_step: 2217838
+complete: false
+best_step: 1632000
+best_epoch: 2838
+time_train_step_start: 1689954732.8672411
+time_io_end: 1689954732.8707848
+time_train_step_end: 1689954733.5023878

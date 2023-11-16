@@ -1,0 +1,18 @@
+dataset_options:
+  default:
+    training:
+      implant_checkpoint: True
+  jetnet:
+    loader:
+      jettype: 't'
+      cond_critic_features:
+        - false
+        - true
+        - true
+        - true
+        - false
+models:
+  gen:
+    additional_losses_list: ["feature_matching"]
+training:
+  disc_steps_per_gen_step: 1

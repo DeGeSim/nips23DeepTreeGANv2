@@ -1,0 +1,233 @@
+tag: scan_cdr5_fullcopy
+seed: 0
+models:
+  gen:
+    name: gen_deeptree
+    params:
+      sample_until_full: false
+      dim_red_in_branching: true
+      n_global: 10
+      pruning: cut
+      branching_param:
+        mode: mat
+        residual: true
+        final_linear: true
+        norm: batchnorm
+        res_mean: false
+        res_final_layer: true
+        dim_red_skip: false
+        gated_cond: false
+      connect_all_ancestors: true
+      ancestor_mpl:
+        n_mpl: 1
+        n_hidden_nodes: 100
+        conv_name: GINConv
+        skip_connecton: true
+        gated_cond: false
+        layer_param:
+          final_linear: true
+          bias: false
+      child_mpl:
+        n_mpl: 0
+        n_hidden_nodes: 100
+        conv_name: GINConv
+        skip_connecton: true
+        layer_param:
+          final_linear: true
+          bias: false
+      final_layer_scaler: false
+    losses:
+      HingeGenLoss:
+        factor: 1.0
+      feature_matching:
+        factor: 0.1
+    losses_list:
+    - HingeGenLoss
+    - feature_matching
+    additional_losses_list:
+    - feature_matching
+    optim:
+      name: Adam
+      params:
+        lr: 1.0e-05
+        weight_decay: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+    scheduler:
+      name: NullScheduler
+      params: {}
+    retain_graph_on_backprop: false
+  disc:
+    name: disc_deeptree
+    params:
+      nodes:
+      - 30
+      - 6
+      - 1
+      features:
+      - 3
+      - 10
+      - 10
+      - 10
+      n_cond: 3
+      ffn_param:
+        bias: false
+        n_layers: 3
+        hidden_layer_size: 100
+        dropout: 0.5
+        norm: spectral
+        equallr: false
+        activation_first: false
+        final_linear: false
+      cnu_param:
+        norm: spectral
+      emb_param:
+        n_ftx_latent: 40
+        norm: batchnorm
+      bipart_param:
+        n_heads: 16
+        mode: mpl
+        spectral_norm: false
+        dropout: 0.0
+      critics_param:
+        n_ftx_latent: 40
+        n_ftx_global: 40
+        n_updates: 2
+    losses:
+      HingeDiscLoss:
+        factor: 1.0
+    losses_list:
+    - HingeDiscLoss
+    additional_losses_list: []
+    optim:
+      name: Adam
+      params:
+        lr: 3.0e-05
+        weight_decay: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+    scheduler:
+      name: NullScheduler
+      params: {}
+    retain_graph_on_backprop: false
+ffn:
+  activation: LeakyReLU
+  hidden_layer_size: 100
+  n_layers: 3
+  activation_params:
+    LeakyReLU:
+      negative_slope: 0.1
+    ReLU: {}
+    SELU: {}
+    GELU: {}
+    Tanh: {}
+  weight_init_method: default
+  norm: batchnorm
+  dropout: 0.0
+  equallr: false
+  activation_first: false
+  final_linear: false
+mpgan_mask:
+  mask_feat: false
+  mask_feat_bin: false
+  mask_weights: false
+  mask_manual: false
+  mask_exp: false
+  mask_real_only: false
+  mask_learn: false
+  mask_learn_bin: true
+  mask_learn_sep: false
+  fmg:
+  - 64
+  mask_disc_sep: false
+  mask_fnd_np: false
+  mask_c: true
+  mask_fne_np: false
+tree:
+  branches:
+  - 2
+  - 3
+  - 5
+  - 5
+  features:
+  - 64
+  - 33
+  - 20
+  - 10
+  - 3
+training:
+  implant_checkpoint: true
+  gan_mode: Hinge
+  disc_steps_per_gen_step: 1
+  early_stopping:
+    validation_steps: 1000
+    improvement: 0.05
+  checkpoint_minutes: 15
+  smoothing: false
+  log_interval: 100
+  max_epochs: 20000
+  val_interval: 3000
+  plot_interval: 9000
+metrics:
+  debug:
+  - w1m
+  stopping:
+  - w1m
+  - w1p
+  - fpnd
+  test:
+  - w1m
+  - w1p
+  - w1efp
+  - fpnd
+  val:
+  - w1m
+  - w1p
+  - fpnd
+  - auc
+  - w1disc
+loader:
+  rootprefix: treeMaker/tree
+  dataset_glob: '**/*.root'
+  eval_glob: null
+  preprocess_training: true
+  chunk_size: 5000
+  batch_size: 200
+  validation_set_size: 10000
+  test_set_size: 50000
+  scaling_fit_size: 10000
+  events_per_file: 10000
+  prefetch_batches: 10
+  n_workers_transform: 30
+  n_workers_stack: 1
+  n_workers_postprocess: 1
+  n_points: 150
+  n_features: 3
+  x_features:
+  - etarel
+  - phirel
+  - ptrel
+  x_ftx_energy_pos: 2
+  y_features:
+  - type
+  - pt
+  - eta
+  - mass
+  - num_particles
+  dataset_path: data/jetnet
+  cond_gen_features:
+  - false
+  - false
+  - false
+  - false
+  - true
+  cond_critic_features:
+  - false
+  - true
+  - true
+  - true
+  - false
+  jettype: t
+dataset_name: jetnet

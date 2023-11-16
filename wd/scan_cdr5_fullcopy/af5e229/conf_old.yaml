@@ -1,0 +1,244 @@
+tag: scan_cdr.5
+loglevel: 20
+loglevel_qf: 30
+seed: 0
+project_name: jetnet150_ddt
+ray: false
+remote: false
+models:
+  gen:
+    name: gen_deeptree
+    params:
+      dim_red_in_branching: true
+      n_global: 10
+      n_cond: 1
+      pruning: cut
+      branching_param:
+        mode: mat
+        residual: true
+        final_linear: true
+        norm: batchnorm
+        res_mean: false
+        res_final_layer: true
+        dim_red_skip: false
+      connect_all_ancestors: true
+      ancestor_mpl:
+        n_mpl: 1
+        n_hidden_nodes: 100
+        conv_name: GINConv
+        skip_connecton: true
+        layer_param:
+          final_linear: true
+          bias: false
+      child_mpl:
+        n_mpl: 0
+        n_hidden_nodes: 100
+        conv_name: GINConv
+        skip_connecton: true
+        layer_param:
+          final_linear: true
+          bias: false
+      final_layer_scaler: false
+    losses:
+      HingeGenLoss:
+        factor: 1.0
+      feature_matching:
+        factor: 0.1
+    losses_list:
+    - HingeGenLoss
+    - feature_matching
+    additional_losses_list:
+    - feature_matching
+    optim:
+      name: Adam
+      params:
+        lr: 1.0e-05
+        weight_decay: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+    scheduler:
+      name: NullScheduler
+      params: {}
+    retain_graph_on_backprop: false
+  disc:
+    name: disc_deeptree
+    params:
+      nodes:
+      - 30
+      - 6
+      - 1
+      features:
+      - 3
+      - 10
+      - 10
+      - 10
+      n_cond: 3
+      ffn_param:
+        bias: false
+        n_layers: 3
+        hidden_layer_size: 100
+        dropout: 0.5
+        norm: spectral
+        equallr: false
+      cnu_param:
+        norm: spectral
+      emb_param:
+        n_ftx_latent: 40
+        norm: batchnorm
+      bipart_param:
+        n_heads: 16
+        mode: mpl
+      critics_param:
+        n_ftx_latent: 40
+        n_ftx_global: 40
+        n_updates: 2
+    losses:
+      HingeDiscLoss:
+        factor: 1.0
+    losses_list:
+    - HingeDiscLoss
+    additional_losses_list: []
+    optim:
+      name: Adam
+      params:
+        lr: 3.0e-05
+        weight_decay: 0.0001
+        betas:
+        - 0.9
+        - 0.999
+    scheduler:
+      name: NullScheduler
+      params: {}
+    retain_graph_on_backprop: false
+ffn:
+  activation: LeakyReLU
+  hidden_layer_size: 100
+  n_layers: 3
+  activation_params:
+    LeakyReLU:
+      negative_slope: 0.1
+    ReLU: {}
+    SELU: {}
+    GELU: {}
+    Tanh: {}
+  weight_init_method: default
+  norm: batchnorm
+  dropout: 0.0
+  equallr: false
+mpgan_mask:
+  mask_feat: false
+  mask_feat_bin: false
+  mask_weights: false
+  mask_manual: false
+  mask_exp: false
+  mask_real_only: false
+  mask_learn: false
+  mask_learn_bin: true
+  mask_learn_sep: false
+  fmg:
+  - 64
+  mask_disc_sep: false
+  mask_fnd_np: false
+  mask_c: true
+  mask_fne_np: false
+tree:
+  branches:
+  - 2
+  - 3
+  - 5
+  - 5
+  features:
+  - 64
+  - 33
+  - 20
+  - 10
+  - 3
+training:
+  gan_mode: Hinge
+  disc_steps_per_gen_step: 1
+  early_stopping:
+    validation_steps: 300
+    improvement: 0.05
+  checkpoint_minutes: 15
+  smoothing:
+    active: false
+  log_interval: 100
+  max_epochs: 10000
+  val:
+    interval: 3000
+    debug_interval: 500
+    plot_interval: 9000
+    use_for_stopping:
+    - fpnd
+    metrics:
+    - w1m
+    - w1p
+    - fpnd
+    - auc
+    - w1disc
+    debug_metrics:
+    - w1m
+    - auc
+    - w1disc
+path:
+  dataset: /home/mscham/fgsim/data/jetnet
+  dataset_processed: /home/mscham/fgsim/data/jetnet/pkl_jetnet_fb94d80
+  ds_lenghts: /home/mscham/fgsim/data/jetnet/pkl_jetnet_fb94d80/filelengths.yaml
+  training: /home/mscham/fgsim/data/jetnet/pkl_jetnet_fb94d80/training
+  validation: /home/mscham/fgsim/data/jetnet/pkl_jetnet_fb94d80/validation.pt
+  test: /home/mscham/fgsim/data/jetnet/pkl_jetnet_fb94d80/test.pt
+  training_glob: '*.pt'
+  geo_lup: data/geo_hgcal/DetIdLUT.root
+  run_path: wd/scan_cdr.5/5a61f65
+  tensorboard: wd/scan_cdr.5/5a61f65/tb
+  checkpoint: wd/scan_cdr.5/5a61f65/checkpoint.torch
+  checkpoint_old: wd/scan_cdr.5/5a61f65/checkpoint_old.torch
+  state: wd/scan_cdr.5/5a61f65/state.yaml
+  state_old: wd/scan_cdr.5/5a61f65/state_old.yaml
+loader:
+  rootprefix: treeMaker/tree
+  dataset_glob: '**/*.root'
+  preprocess_training: true
+  chunk_size: 5000
+  batch_size: 200
+  validation_set_size: 10000
+  test_set_size: 50000
+  scaling_fit_size: 10000
+  events_per_file: 10000
+  prefetch_batches: 10
+  n_workers_transform: 30
+  n_workers_stack: 1
+  n_workers_postprocess: 1
+  n_points: 150
+  n_features: 3
+  x_features:
+  - etarel
+  - phirel
+  - ptrel
+  x_ftx_energy_pos: 2
+  y_features:
+  - type
+  - pt
+  - eta
+  - mass
+  - num_particles
+  dataset_path: ~/fgsim/data/jetnet
+  cond_gen_features:
+  - false
+  - false
+  - false
+  - false
+  - true
+  cond_critic_features:
+  - false
+  - true
+  - true
+  - true
+  - false
+  jettype: t
+dataset_name: jetnet
+hash: 5a61f65
+debug: false
+command: setup
+loader_hash: fb94d80

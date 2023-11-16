@@ -1,0 +1,32 @@
+dataset_name: calochallange
+project_name: calochallange
+model_param_options:
+  disc_deeptree:
+    nodes: [30, 6, 1]
+    features: [4, 10, 10, 10]
+    ffn_param:
+      norm: "spectral"
+      dropout: 0.3
+    cnu_param:
+      norm: "spectral"
+    emb_param:
+      norm: "snbn"
+    bipart_param:
+      spectral_norm: True
+  gen_deeptree:
+    branching_param:
+      gated_cond: True
+    ancestor_mpl:
+      gated_cond: True
+models:
+  gen:
+    name: gen_deeptree
+    additional_losses_list: ["knndist"]
+training:
+  disc_steps_per_gen_step: 5
+loss_options:
+  knndist:
+    factor: 10.0
+ffn:
+  activation_first: True
+  final_linear: True

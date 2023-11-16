@@ -1,0 +1,514 @@
+tag: default
+loglevel: 20
+loglevel_qf: 30
+seed: 0
+project_name: "jetnet150_ddt"
+ray: False
+remote: False
+
+models:
+  gen:
+    name: gen_deeptree
+    params: ${model_param_options[${models.gen.name}]}
+    losses: "${optionlist:${loss_options},${models.gen.losses_list}}"
+    losses_list: ${listadd:${gan_mode_options[${training.gan_mode}][gen]},${models.gen.additional_losses_list}}
+    additional_losses_list: []
+    optim:
+      name: Adam
+      params: ${optim_options[gen][${models.gen.optim.name}]}
+    scheduler:
+      name: NullScheduler
+      params: ${scheduler_options[${models.gen.scheduler.name}]}
+    retain_graph_on_backprop: False
+  disc:
+    name: disc_deeptree
+    params: ${model_param_options[${models.disc.name}]}
+    losses: "${optionlist:${loss_options},${models.disc.losses_list}}"
+    losses_list: ${listadd:${gan_mode_options[${training.gan_mode}][disc]},${models.disc.additional_losses_list}}
+    additional_losses_list: []
+    optim:
+      name: Adam
+      params: ${optim_options[disc][${models.gen.optim.name}]}
+    scheduler:
+      name: NullScheduler
+      params: ${scheduler_options[${models.disc.scheduler.name}]}
+    retain_graph_on_backprop: False
+
+optim_options:
+  gen:
+    Adam:
+      lr: 1.0e-05
+      weight_decay: 1.0e-4
+      betas: [0.9, 0.999]
+    SGD:
+      lr: 1.0e-05
+    RMSprop:
+      lr: 1.0e-05
+    FakeOptimizer: {}
+  disc:
+    Adam:
+      lr: 3.0e-5
+      weight_decay: 1.0e-4
+      betas: [0.9, 0.999]
+    SGD:
+      lr: 3.0e-5
+    RMSprop:
+      lr: 2.e-4
+    FakeOptimizer: {}
+
+scheduler_options:
+  NullScheduler: {}
+  SWA: {}
+  OneCycleLR:
+    max_lr: 5.0e-04
+    total_steps: ${prod:500, 575}
+  CosineAnnealingWarmRestarts:
+    T_0: 10_000
+    eta_min: 1.0e-6
+  CyclicLR:
+    max_lr: 1.0e-4
+    base_lr: 1.0e-5
+    step_size_up: 100_000
+    cycle_momentum: False
+    mode: "triangular2"
+  CosineAnnealingLR:
+    eta_min: 1.0e-5
+    T_max: 500_000
+  StepLR:
+    step_size: 10_000
+    gamma: 0.5
+  MultiStepLR:
+    milestones: []
+    gamma: 0.1
+
+gan_mode_options:
+    Hinge:
+        gen: [HingeGenLoss]
+        disc: [HingeDiscLoss]
+    CE:
+        gen: [CEGenLoss]
+        disc: [CEDiscLoss]
+    W:
+        gen: [WGenLoss]
+        disc: [WDiscLoss, GradientPenalty]
+    MSE:
+        gen: [MSEGenLoss]
+        disc: [MSEDiscLoss]
+
+ffn:
+  activation: LeakyReLU
+  hidden_layer_size: 100
+  n_layers: 3
+  activation_params:
+    LeakyReLU:
+      negative_slope: 0.1
+    ReLU: {}
+    SELU: {}
+    GELU: {}
+    Tanh: {}
+  weight_init_method: default
+  norm: batchnorm
+  dropout: 0.0
+  equallr: false
+  activation_first: True
+  final_linear: True
+
+layer_options:
+  DeepConv:
+    add_self_loops: True
+    nns: upd
+    msg_nn_include_edge_attr: False
+    msg_nn_include_global: False
+    msg_nn_final_linear: True
+    upd_nn_include_global: True
+    upd_nn_final_linear: True
+    residual: False
+  GINConv:
+    final_linear: True
+    bias: False
+  GINCConv:
+    final_linear: True
+  GATv2MinConv:
+    heads: 8
+    concat: True
+
+model_param_options:
+  gen_deeptree:
+    sample_until_full: False
+    dim_red_in_branching: True
+    n_global: 10
+    pruning: "cut"
+    branching_param:
+      mode: "mat"
+      residual: True
+      final_linear: True
+      norm: batchnorm
+      res_mean: False
+      res_final_layer: True
+      dim_red_skip: False
+      gated_cond: True
+    connect_all_ancestors: True
+    ancestor_mpl:
+      n_mpl: 1
+      n_hidden_nodes: 100
+      conv_name: GINConv
+      skip_connecton: True
+      gated_cond: False
+      layer_param: ${layer_options[${model_param_options.gen_deeptree.ancestor_mpl.conv_name}]}
+    child_mpl:
+      n_mpl: 0
+      n_hidden_nodes: 100
+      conv_name: GINConv
+      skip_connecton: True
+      layer_param: ${layer_options[${model_param_options.gen_deeptree.child_mpl.conv_name}]}
+    final_layer_scaler: False
+  gen_treepc:
+    features: [96, 64, 64, 64, 64, 64, 4]
+    degrees: [2, 2, 2, 2, 2, 64]
+    support: 10
+  gen_edgeconv:
+    n_layers: 5
+    n_features: 2
+    n_global: 5
+  gen_linear:
+    random_size: 64
+    n_points: ${loader[n_points]}
+    n_features: ${loader[n_features]}
+    batch_size: ${loader[batch_size]}
+  gen_fake: {}
+  gen_moons: {}
+  disc_fake: {}
+  disc_hlvs: {}
+  disc_benno: {}
+  disc_benno_lin:
+    n_dim: 3
+    l_dim: 40
+    hidden: 1024
+    num_layers: 8
+    heads: 8
+    dropout: 0.5
+    activation: gelu
+    slope: 0.1
+    norm: false
+  disc_benno_linw:
+    n_dim: 3
+    l_dim: 128
+    hidden: 128
+    num_layers: 4
+    heads: 4
+    mean_field: True
+  disc_mdma:
+    n_dim: ${loader.n_features}
+    l_dim: 16
+    hidden: 32
+    num_layers: 2
+    heads: 2
+    dropout: 0.1
+  disc_deeptree:
+    nodes: [30, 6, 1]
+    features: [3, 10, 10, 10]
+    n_cond: ${sum:${loader.cond_critic_features}}
+    ffn_param:
+      bias: False
+      n_layers: 3
+      hidden_layer_size: 100
+      dropout: 0.5
+      norm: "spectral"
+      equallr: false
+      activation_first: False
+      final_linear: False
+    cnu_param:
+      norm: "spectral"
+    emb_param:
+      n_ftx_latent: 40
+      norm: "batchnorm"
+    bipart_param:
+      n_heads: 16
+      mode: "mpl"
+      spectral_norm: False
+      dropout: 0.0
+    critics_param:
+      n_ftx_latent: 40
+      n_ftx_global: 40
+      n_updates: 2
+  disc_diffpool: {}
+  disc_dt_tsumt2: {}
+  disc_dt_wlevels: {}
+  disc_dt_wall: {}
+  disc_dt_epictsumt: {}
+  disc_gat:
+    n_features: ${loader[n_features]}
+    n_points: ${loader[n_points]}
+    n_cond: ${sum:${loader.cond_critic_features}}
+  disc_clic:
+    n_features: ${loader[n_features]}
+    n_prop: 20
+    n_global: 2
+    n_nn: 8
+  disc_clicgat: ${model_param_options[disc_clic]}
+  disc_graphgym:
+    n_features: ${loader[n_features]}
+    n_nn: 8
+  disc_treepc:
+    features: ${tree[features]} # [4, 64, 128, 256]
+  disc_pointnet:
+    batch_size: ${loader[batch_size]}
+    n_points: ${loader[n_points]}
+    n_features: ${loader[n_features]}
+  disc_pointnet2: ${model_param_options[disc_pointnet]}
+  disc_prog:
+    leveldisc: disc_graphgym
+    levelparams: ${model_param_options[disc_graphgym]}
+  disc_pointnetmix:
+    pointnetd_fc: [512]
+    node_feat_size: 3
+    leaky_relu_alpha: 0.2
+    pointnetd_pointfc: [64, 128, 1024]
+    num_hits: ${loader.n_points}
+    mask: False
+  disc_pcgan:
+    modus: latent
+    latent_dim: 128
+    z1_dim: 256
+    z2_dim: 10
+    d_dim: 256
+    pool: "max1"
+  disc_gapt:
+    num_particles: ${loader.n_points}
+    input_feat_size: ${loader.n_features}
+  gen_gapt:
+    num_particles: ${loader.n_points}
+    output_feat_size: ${loader.n_features}
+    embed_dim: 32
+  gen_mp:
+    num_particles: ${loader.n_points}
+    hidden_node_size: 32
+    fe_layers: [96, 160, 192]
+    fn_layers: [256, 256]
+    fn1_layers: null # end common
+    mp_iters: 2
+    fe1_layers: null
+    final_activation: tanh
+    output_node_size: ${loader.n_features}
+    input_node_size: 32 # 0 for gen_fc and gen_graphcnn
+    lfc: False
+    lfc_latent_size: 128
+  disc_mp:
+    num_particles: ${loader.n_points}
+    hidden_node_size: 32
+    fe_layers: [25, 25, 25]
+    fn_layers: [256, 256]
+    fn1_layers: null # end common
+    mp_iters: 2
+    fe1_layers: null
+    final_activation: ""
+    dea: True
+    dea_sum: True
+    fnd: []
+    mask_fnd_np: False
+    input_node_size: ${loader.n_features}
+
+mpgan_mask:
+  mask_feat: False
+  mask_feat_bin: False
+  mask_weights: False
+  mask_manual: False
+  mask_exp: False
+  mask_real_only: False
+  mask_learn: False
+  mask_learn_bin: True
+  mask_learn_sep: False
+  fmg: [64]
+  mask_disc_sep: False
+  mask_fnd_np: False
+  mask_c: True
+  mask_fne_np: False
+
+tree: ${mergedefault:${dataset_options},${dataset_name},tree}
+
+loss_options:
+  WGenLoss:
+    factor: 1.0
+  WDiscLoss:
+    factor: 1.0
+  MSEDiscLoss:
+    factor: 1.0
+  MSEGenLoss:
+    factor: 1.0
+  CEDiscLoss:
+    factor: 1.0
+  CEGenLoss:
+    factor: 1.0
+  HingeDiscLoss:
+    factor: 1.0
+  HingeGenLoss:
+    factor: 1.0
+  GradientPenalty:
+    factor: 1.0
+    gamma: 1.0
+  mean_dist:
+    factor: 1.0
+  physics:
+    factor: 1.0
+  frechetpcdist:
+    factor: 1.0
+  extozero:
+    factor: 0.001
+  outside_interval:
+    factor: 1.0
+    high: 4.0
+    low: -4.0
+  feature_matching:
+    factor: 1.0e-1
+  condreg:
+    factor: 1.0
+  histd:
+    factor: 1.0e-1
+  histg:
+    factor: 1.0e-1
+  mmd:
+    factor: 1.0
+    kernel: "rbf"
+    bandwidth: [10, 15, 20, 50]
+  mmdpc:
+    factor: 1.0
+    kernel: "rbf"
+    bandwidth: [10, 15, 20, 50]
+    batch_wise: False
+  fd:
+    factor: 0.001
+  dcd:
+    factor: 1.0
+    alpha: 1
+    lpnorm: 1
+    batch_wise: False
+    pow: 2
+  cd:
+    factor: 1.0
+    lpnorm: 1
+    batch_wise: False
+    pow: 1
+  knndist:
+    factor: 1.0
+  marsw1:
+    factor: 1.0
+
+training: ${mergedefault:${dataset_options},${dataset_name},training}
+metrics: ${mergedefault:${dataset_options},${dataset_name},metrics}
+
+path:
+    dataset: "${loader.dataset_path}"
+    geo_lup: "data/geo_hgcal/DetIdLUT.root"
+    run_path: "$WD/${tag}/${hash}"
+
+loader: ${mergedefault:${dataset_options},${dataset_name},loader}
+dataset_name: jetnet
+
+dataset_options:
+    default:
+        tree:
+            branches: [2, 4, 4,4]
+            features:
+                - 512
+                - 128
+                - 64
+                - 16
+                - 1
+        training:
+            implant_checkpoint: False
+            gan_mode: Hinge
+            disc_steps_per_gen_step: 2
+            early_stopping:
+                validation_steps: 1000
+                improvement: 0.05
+            checkpoint_minutes: 15
+            smoothing: False
+            log_interval: 100
+            max_epochs: 20000
+            val_interval: "${div:5_000_000,${dataset_options[${dataset_name}][loader][batch_size]}}"
+            plot_interval: "${div:10_000_000,${dataset_options[${dataset_name}][loader][batch_size]}}"
+        loader:
+            rootprefix: "treeMaker/tree"
+            dataset_glob: "**/*.root"
+            eval_glob: null
+            preprocess_training: True
+            chunk_size: 1000
+            batch_size: 200
+            validation_set_size: 10000
+            test_set_size: 50000
+            scaling_fit_size: 10000
+            events_per_file: 10000
+            prefetch_batches: 10
+            n_workers_transform: 30
+            n_workers_stack: 1
+            n_workers_postprocess: 1
+            n_points: 128
+            n_features: ${len:${dataset_options[${dataset_name}][loader][x_features]}}
+            x_features: ["foo"]
+            x_ftx_energy_pos: 0
+            y_features: ["num_particles"]
+        metrics:
+            debug: []
+            stopping: []
+            test: []
+            val: []
+    jetnet:
+        tree:
+            branches: [2, 3, 5, 5]
+            features: [64, 33, 20, 10, 3]
+        training:
+            val_interval: 3_000
+            plot_interval: 9_000
+        loader:
+            dataset_path: "data/jetnet"
+            n_points: 150
+            x_features: ["etarel", "phirel", "ptrel"]
+            y_features: ["type","pt", "eta", "mass", "num_particles"]
+            x_ftx_energy_pos: 2
+            cond_gen_features: [False, False, False, False, True]
+            cond_critic_features: [True, True, True, True, True]
+            jettype: "t"
+            chunk_size: 5000
+            batch_size: 200
+        metrics:
+            debug: ["w1m"]
+            val: ["w1m","w1p","fpnd","auc","w1disc"]
+            stopping: ["w1m","w1p","fpnd"]
+            test: ["w1m","w1p","w1efp","fpnd"]
+    calochallange:
+      tree:
+        branches: [2, 3, 4, 5, 5, 10]
+        features: [64, 25, 15, 10, 8, 6, 4]
+      loader:
+        dataset_path: "~/fgsim/data/calochallange2"
+        dataset_glob: "**/dataset_2_*.hdf5"
+        eval_glob: "dataset_2_2.hdf5"
+        n_points: 6000 # 2, 3, 2,5 , 2,5 , 10
+        x_features: ["E", "z", "alpha", "r"]
+        x_ftx_energy_pos: 0
+        y_features: ["E", "num_particles", "Eperlayer"]
+        cond_gen_features: [True, True, True]
+        cond_critic_features: [True, True, True]
+        chunk_size: 1000
+        batch_size: 50
+        validation_set_size: 10_000
+        test_set_size: 50_000
+      val_interval:
+        val_interval: 2_000
+        plot_interval: 4_000
+      metrics:
+        debug: ["marginalEw"]
+        stopping: ["marginalEw", "showershape", "fpc", "sphereratio", "nhits"]
+        test: ["marginal","marginalEw","showershape","fpc","sphereratio","response","nhits"]
+        val: ["marginal","marginalEw","showershape","fpc","sphereratio","response","nhits"]
+    hgcal_soham:
+      loader:
+        dataset_path: "~/fgsim/data/soham_pi0"
+        n_points: 128
+        batch_size: 50
+        braches:
+          id: "simHit_detid"
+          energy: "genPh_E"
+          hit_energy: "simHit_E"
+        y_features: ["Egen", "eta", "phi"]
+        x_features: ["E_hit", "x", "y", "layer"]
