@@ -1,3 +1,14 @@
+# DeepTreeGANv2
+Repository for https://arxiv.org/abs/2312.00042 
+
+
+Predecessor Model:
+[arxiv](https://arxiv.org/abs/2311.12616) [Repository](https://github.com/DeGeSim/chep23DeepTreeGAN)
+
+
+## Usage
+
+
 Setup the enviroment:
 
 ~~~bash
@@ -63,3 +74,7 @@ Epoch 1:   8%|████████▎                                       
 Epoch 2:  12%|████████████▍                                                           | 1767/14725 [00:44<16:08, 13.37it/s]
 Epoch 3:  14%|██████████████
 ~~~
+
+## Authors
+
+Moritz Scham is funded by Helmholtz Association’s Initiative and Networking Fund through Helmholtz AI (grant number: ZT-I-PF-5-3).
